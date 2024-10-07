@@ -4,14 +4,24 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <set>
 #include <iostream>
 
 // Epsilon NKA instanca
 class ENFA {
+private:
+    std::set<std::string> states;
+    std::set<std::string> alphabet;
+    std::set<std::string> acceptStates;
+    std::string startState;
+    std::map<std::pair<std::string, std::string>, std::set<std::string>> transitions;
 public:
+    // TODO: Probably write ENFAFactory class that takes in Regex and creates ENFA so change
+    // the constructor to take states, alphabet, acceptStates, startState and transitions rather
+    // than it taking the regex and then generating it itself
     ENFA(std::string regex) { /* TODO: Implement */ }
     ENFA* concat(ENFA* other);
-    bool run(unsigned int current, char input);
+    bool run(std::string inputStream);
 };
 
 // Upravljač stanjima lexera i automatima
@@ -20,13 +30,44 @@ private:
     std::string currentLexerState;
 
     // Za svako stanje leksera predodređen je broj epsilon NKA za koje postoji akcija
-    std::map<std::string, std::vector<ENFA>> stateEnfaMap;
+    std::map<std::string, std::vector<std::pair<ENFA, Action*>>> stateEnfaMap;
 public:
     ENFAManager() { };
     void setCurrentLexerState(std::string newState) { this->currentLexerState = newState; };
     void addLexerState(std::string newState);
-    void addENFAForLexerState(std::string state, ENFA newEnfa);
+    void addENFAForLexerState(std::string state, std::pair<ENFA, Action*> newEnfaActionPair);
     unsigned int run(std::string input);
+};
+
+// Stvara epsilon NKA za dani regularan izraz
+class ENFARegexParser {
+public:
+    static ENFA* parseRegex(std::string regexExpression);
+};
+
+enum class MicroClass {
+    NOVI_REDAK
+};
+
+// Definira određenu akciju
+class Action {
+private:
+    std::vector<std::string> microActions;
+public:
+    Action(std::vector<std::string> microActions) {
+        this->microActions = microActions;
+    }
+
+    void execute(SourceReader* activeReader) {
+        for(std::string microAction : microActions) {
+            // FIXME: Do something
+            switch(microAction) {
+                case "NOVI REDAK":
+                    activeReader->incrementRowCounter();
+                    break;
+            }
+        }
+    }
 };
 
 // Čitač koda koji ulazi u analizator (lexer)
@@ -51,6 +92,7 @@ public:
     void analyze();
     void executeAction();
     void recoverFromError();
+    void incrementRowCounter() { this->currentRow++; };
 };
 
 /**
@@ -88,10 +130,10 @@ ENFA* ENFA::concat(ENFA* other) { /* TODO: Implement */ }
  * Računa tranziciju sa trenutnih (current) stanja za ulaz (input)
  *
  * @param current Broj dobiven maskiranjem jedinica na pozicijama stanja koja su aktivna
- * @param input Ulaz u automat za koji je potrebno "izračunati" tranziciju
+ * @param inputStream Niz ulaznih znakova u automat za koje je potrebno "izračunati prihvatljivost"
  * @return Boolean koji govori je li stanje automata nakon tranzicije prihvatiljivo
  */
-bool ENFA::run(unsigned int current, char input) { /* TODO: Implement */ }
+bool ENFA::run(std::string inputStream) { /* TODO: Implement */ }
 
 /**
  * Dodaje novo stanje lexera u mapu svih stanja leksera i
@@ -108,7 +150,7 @@ void ENFAManager::addLexerState(std::string newState) { /* TODO: Implement*/ }
  * @param state Stanje za koje dodajemo epsilon NKA
  * @param newEnfa Epsilon NKA koji dodajemo
  */
-void ENFAManager::addENFAForLexerState(std::string state, ENFA newEnfa) { /*TODO: Implement*/ }
+void ENFAManager::addENFAForLexerState(std::string state, std::pair<ENFA, Action*> newEnfaActionPair) { /*TODO: Implement*/ }
 
 /**
  * Za trenutno stanje leksera prolazi po svim epsilon NKA za dani ulazni niz

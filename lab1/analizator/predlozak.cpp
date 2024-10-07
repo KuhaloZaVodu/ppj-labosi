@@ -7,6 +7,8 @@ int main() {
 
     std::getline(std::cin, input, '\0'); // Procitaj citav stdin u varijablu input
 
+    // ??
+
     SourceReader* reader = new SourceReader(&input);
     reader->analyze();
 
