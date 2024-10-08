@@ -14,8 +14,6 @@ public:
 // Definicija akcije koju leksički analizator može poduzeti
 struct LexerAction {
     std::pair<std::string, std::string> stateRegex;
-    //std::string state;
-    //std::string regex;
     std::vector<std::string> commands;
 };
 
@@ -53,8 +51,6 @@ int main() {
 
     std::getline(std::cin, input, '\0'); // Procitaj citav stdin u varijablu input
 
-    //std::cout << input;
-
     LexerDefinitionParser parser;
     parser.parseInput(input);
     LexerDefinition definition = parser.getLexerDefintion();
@@ -84,6 +80,7 @@ void LexerDefinitionParser::parseInput(std::string input) {
     LexerAction temp_LexerAction;
     std::vector<LexerAction> temp_actions;
     bool microActionReader = false;
+    std::map<std::string, std::string> regDefTemp;
 
     while (std::getline(iss, row)) {
         if (!pos) { //regdef
@@ -99,7 +96,22 @@ void LexerDefinitionParser::parseInput(std::string input) {
                         break;
                     }
                 }
-                parsedLexerDefinition.regDefs.emplace(first, second);
+                //checking occurence of {previousDefinition}
+                bool occurence = true;
+                while (occurence) {
+                    occurence = false;
+                    for(auto it : regDefTemp) {
+                        std::string tester = "{" + it.first + "}";
+                        if(second.find(tester) != std::string::npos) {
+                            occurence = true;
+                            size_t position = second.find(tester);
+                            std::string inserter = "(" + it.second + ")";
+                            second.replace(position, tester.length(), inserter);
+                            break;
+                        }
+                    }
+                }
+                regDefTemp.emplace(first, second);
             } else { // ocekuje se %X pa %L
                 row = row.substr(3, row.length() - 3);
                 std::istringstream iss2(row);
@@ -111,6 +123,7 @@ void LexerDefinitionParser::parseInput(std::string input) {
                 while (std::getline(iss3, temp, ' '))
                     parsedLexerDefinition.lexicalUnits.insert(temp);
                 pos = true;
+                parsedLexerDefinition.regDefs = regDefTemp;
             }
         } else {
             if (row.substr(0, 1) == "<") {
@@ -124,6 +137,22 @@ void LexerDefinitionParser::parseInput(std::string input) {
                     } else {
                         second = temp;
                         break;
+                    }
+                }
+
+                //checking occurence of {previousDefinition}
+                bool occurence = true;
+                while (occurence) {
+                    occurence = false;
+                    for(auto it : regDefTemp) {
+                        std::string tester = "{" + it.first + "}";
+                        if(second.find(tester) != std::string::npos) {
+                            occurence = true;
+                            size_t position = second.find(tester);
+                            std::string inserter = "(" + it.second + ")";
+                            second.replace(position, tester.length(), inserter);
+                            break;
+                        }
                     }
                 }
             } else if (row == "{") {
@@ -165,5 +194,4 @@ void LexerDefinitionParser::parseInput(std::string input) {
  * @param path Odredišna putanja direktorija u kojemu će biti izvorni kod lexera
  * @return Pokazivač na generiranu datoteku
  */
-FILE *
-LexerGenerator::generateLexerSource(LexerDefinition *lexerDefinition, std::string path) { throw NotImplemented(); }
+FILE *LexerGenerator::generateLexerSource(LexerDefinition *lexerDefinition, std::string path) { throw NotImplemented(); }
