@@ -124,7 +124,61 @@ void SourceReader::recoverFromError() { /* TODO: Implement */ }
  * @param other Pokazivač na drugi epsilon NKA
  * @return Pokazivač na novi epsilon NKA
  */
-ENFA* ENFA::concat(ENFA* other) { }
+ENFA* ENFA::concat(ENFA* other) {
+    std::set<std::string> newStates;
+    std::set<std::string> newAlphabet;
+    std::set<std::string> newAcceptStates;
+    std::string newStartState;
+    std::map<std::pair<std::string, std::string>, std::set<std::string>> newTransitions;
+
+    for (auto state : this->states) {
+        newStates.insert("1" + state);
+    }
+
+    for (auto state : other->states) {
+        newStates.insert("2" + state);
+    }
+
+    for (auto acceptState : this->acceptStates) {
+        newAcceptStates.insert("1" + acceptState);
+    }
+
+    for (auto acceptState : other->acceptStates) {
+        newAcceptStates.insert("2" + acceptState);
+    }
+
+    newAlphabet = this->alphabet;
+    newAlphabet.insert(other->alphabet.begin(), other->alphabet.end());
+
+    for (const auto& transition : this->transitions) {
+        auto newKey = std::make_pair("1" + transition.first.first, transition.first.second);
+        std::set<std::string> newTargets;
+        for (const auto& target : transition.second) {
+            newTargets.insert("1" + target);
+        }
+        newTransitions[newKey] = newTargets;
+    }
+
+    for (const auto& transition : other->transitions) {
+        auto newKey = std::make_pair("2" + transition.first.first, transition.first.second);
+        std::set<std::string> newTargets;
+        for (const auto& target : transition.second) {
+            newTargets.insert("2" + target);
+        }
+        newTransitions[newKey] = newTargets;
+    }
+
+    newStartState = "u" + this->startState + other->startState;
+
+    auto startEpsilonKey = std::make_pair(newStartState, "$");
+    std::set<std::string> oldStartStates;
+    oldStartStates.insert("1" + this->startState);
+    oldStartStates.insert("2" + other->startState);
+
+    newTransitions.insert(std::make_pair(startEpsilonKey, oldStartStates));
+
+    return new ENFA(newStates, newAlphabet, newAcceptStates, newStartState, newTransitions);
+}
 
 /**
  * Odrađuje sve epsilon tranzicije
