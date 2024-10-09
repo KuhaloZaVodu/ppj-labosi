@@ -7,7 +7,13 @@
 #include <set>
 #include <iostream>
 
-// Epsilon NKA instanca
+/** Epsilon NKA instanca
+ * @param states Set of strings that represent states
+ * @param alphabet Set of strings that represent alphabet
+ * @param acceptStates Set of strings that represent accepted states
+ * @param startState String that represents the starting state
+ * @param transitions Map<Pair<String, String>, Set<String>> that represents the transition for the input symbol
+ */
 class ENFA {
 private:
     std::set<std::string> states;
@@ -15,13 +21,15 @@ private:
     std::set<std::string> acceptStates;
     std::string startState;
     std::map<std::pair<std::string, std::string>, std::set<std::string>> transitions;
+    void epsilonTransitions(std::set<std::string>& currentStates) const;
 public:
-    // TODO: Probably write ENFAFactory class that takes in Regex and creates ENFA so change
-    // the constructor to take states, alphabet, acceptStates, startState and transitions rather
-    // than it taking the regex and then generating it itself
-    ENFA(std::string regex) { /* TODO: Implement */ }
+    ENFA(std::set<std::string> states, std::set<std::string> alphabet, std::set<std::string> acceptStates, 
+         std::string startState, std::map<std::pair<std::string, std::string>, std::set<std::string>> trans12itions)
+        : states(std::move(states)), alphabet(std::move(alphabet)), acceptStates(std::move(acceptStates)), 
+          startState(std::move(startState)), transitions(std::move(transitions)) {};
+
     ENFA* concat(ENFA* other);
-    bool run(std::string inputStream);
+    bool run(std::string& inputStream);
 };
 
 // Upravljač stanjima lexera i automatima
@@ -40,6 +48,7 @@ public:
 };
 
 // Stvara epsilon NKA za dani regularan izraz
+// TODO: Prebaciti ovu staticku metodu unutar ENFA klase ovo je suvišno
 class ENFARegexParser {
 public:
     static ENFA* parseRegex(std::string regexExpression);
@@ -58,16 +67,7 @@ public:
         this->microActions = microActions;
     }
 
-    void execute(SourceReader* activeReader) {
-        for(std::string microAction : microActions) {
-            // FIXME: Do something
-            switch(microAction) {
-                case "NOVI REDAK":
-                    activeReader->incrementRowCounter();
-                    break;
-            }
-        }
-    }
+    void execute(SourceReader* activeReader);
 };
 
 // Čitač koda koji ulazi u analizator (lexer)
@@ -124,16 +124,80 @@ void SourceReader::recoverFromError() { /* TODO: Implement */ }
  * @param other Pokazivač na drugi epsilon NKA
  * @return Pokazivač na novi epsilon NKA
  */
-ENFA* ENFA::concat(ENFA* other) { /* TODO: Implement */ }
+ENFA* ENFA::concat(ENFA* other) { }
+
+/**
+ * Odrađuje sve epsilon tranzicije
+ *
+ * @param currentStates Stanja u kojima se epsilon NKA nalazi
+ */
+void ENFA::epsilonTransitions(std::set<std::string>& currentStates) const {
+    std::set<std::string> visitedStates = currentStates;
+    bool updated = true;
+    
+    while (updated) {
+        updated = false;
+        std::set<std::string> newStates;
+        
+        for (const std::string& state : currentStates) {
+            auto epsilonTrans = transitions.find({state, "$"});
+            
+            if (epsilonTrans != transitions.end()) {
+                for (const std::string& newState : epsilonTrans->second) {
+                    if (visitedStates.find(newState) == visitedStates.end()) {
+                        newStates.insert(newState);
+                        visitedStates.insert(newState);
+                        updated = true;
+                    }
+                }
+            }
+        }
+        
+        currentStates.insert(newStates.begin(), newStates.end());
+    }
+};
 
 /**
  * Računa tranziciju sa trenutnih (current) stanja za ulaz (input)
  *
- * @param current Broj dobiven maskiranjem jedinica na pozicijama stanja koja su aktivna
  * @param inputStream Niz ulaznih znakova u automat za koje je potrebno "izračunati prihvatljivost"
  * @return Boolean koji govori je li stanje automata nakon tranzicije prihvatiljivo
  */
-bool ENFA::run(std::string inputStream) { /* TODO: Implement */ }
+bool ENFA::run(std::string& inputStream) {
+    std::set<std::string> currentStates = { startState };
+
+    epsilonTransitions(currentStates);
+
+    for (char inputSymbol : inputStream) {
+        std::string letter(1, inputSymbol); // pretvori char u string (možda malo nepotrebno)
+        std::set<std::string> nextStates;
+
+        if (letter.compare(",") == 0) continue;
+
+        for (const std::string& state : currentStates) {
+            auto it = transitions.find({state, letter});
+            if (it != transitions.end()) {
+                nextStates.insert(it->second.begin(), it->second.end());
+            }
+        }
+
+        if (nextStates.empty()) {    
+            return false;
+        }
+
+        currentStates = nextStates;
+
+        epsilonTransitions(currentStates);
+    }
+
+    for (const std::string& state : currentStates) {
+        if (acceptStates.find(state) != acceptStates.end()) {
+            return true;
+        }        
+    }
+
+    return false;
+}
 
 /**
  * Dodaje novo stanje lexera u mapu svih stanja leksera i
@@ -159,6 +223,27 @@ void ENFAManager::addENFAForLexerState(std::string state, std::pair<ENFA, Action
  * @param input Ulaz u automat za koji je potrebno "izračunati" tranziciju
  * @return Broj koji nastaje maskiranjem bitova na pozicijama automata za koje je stanje prihvatljivo nakon prolaza
  */
-unsigned int ENFAManager::run(std::string input) { /*TODO: Implement*/ }
+unsigned int ENFAManager::run(std::string input) { /* TODO: Implement */ }
+
+/**
+ * Za dani regularni izraz (regex) stvara epsilon NKA
+ *
+ * @param regex Regularni izraz koji definira epsilon NKA
+ * @return Pokazivač na stvoreni epsilon NKA
+ */
+ENFA* ENFARegexParser::parseRegex(std::string regex) { /* TODO: Implement */ }
+
+/**
+ * Izvršava akciju koju je potrebno izvršiti u trenutnom "kontekstu"
+ *
+ * @param activeReader Pokazivač na čitača izvornog koda koji je trenutno aktivan
+ */
+void Action::execute(SourceReader* activeReader) {
+    for(std::string microAction : microActions) {
+        if (microAction.compare("NOVI REDAK") == 0) {
+            activeReader->incrementRowCounter();
+        } // else if...
+    }
+}
 
 #endif
